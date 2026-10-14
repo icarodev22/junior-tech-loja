@@ -19,12 +19,13 @@
 
   function validPrice(v) { return typeof v === 'number' && isFinite(v) && v > 0; }
 
+  var EM_BREVE = !!(DATA.config && DATA.config.artesEmBreve);
   var PRODUCTS = DATA.produtos.filter(function (p) { return p && p.id && CATS[p.categoria]; }).map(function (p, i) {
     var price = validPrice(p.preco) ? p.preco : null;
     // promoção só vale com preço anterior real e maior que o atual
     var old = price !== null && validPrice(p.precoAnterior) && p.precoAnterior > price ? p.precoAnterior : null;
     return {
-      id: p.id, cat: p.categoria, name: p.nome, img: p.imagem || null, icon: p.icone || 'caixa',
+      id: p.id, cat: p.categoria, name: p.nome, img: EM_BREVE ? null : (p.imagem || null), icon: p.icone || 'caixa',
       price: price, old: old, off: old ? Math.round((1 - price / old) * 100) : 0,
       available: p.disponivel === true ? true : p.disponivel === false ? false : null,
       featured: !!p.destaque, order: i
@@ -40,6 +41,15 @@
     suporte: '<rect x="8" y="3" width="8" height="14" rx="1.5"/><path d="M5 9v4a7 7 0 0 0 14 0V9M12 20v2"/>',
     relogio: '<rect x="6" y="6" width="12" height="12" rx="3"/><path d="M9 6l1-4h4l1 4M9 18l1 4h4l1-4M12 10v2l1.5 1"/>',
     caixa: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16"/>',
+    capinha: '<rect x="6" y="2" width="12" height="20" rx="3"/><rect x="8.5" y="4.5" width="4" height="5" rx="1.2"/><circle cx="10.5" cy="6.2" r=".6"/><circle cx="10.5" cy="8.2" r=".6"/>',
+    carregador: '<rect x="6" y="8" width="12" height="13" rx="2.5"/><path d="M9.5 8V3M14.5 8V3M11 17h2"/>',
+    cabo: '<path d="M7 3v4M5 7h4v4H5zM7 11v3a4 4 0 0 0 8 0v-4"/><path d="M13 6h4v4h-4zM15 6V3"/>',
+    carro: '<rect x="8" y="3" width="8" height="14" rx="3"/><path d="M10 21h4M12 17v4M10.5 8h3M10.5 11h3"/>',
+    fone: '<path d="M8 4a3 3 0 0 0-3 3v6a2 2 0 0 0 2 2h1V4zM16 4a3 3 0 0 1 3 3v6a2 2 0 0 1-2 2h-1V4z"/><rect x="6" y="17" width="12" height="5" rx="2.5"/>',
+    headset: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="7" rx="1.5"/><rect x="17" y="14" width="4" height="7" rx="1.5"/><path d="M5 21c1 1 4 1 6 0"/>',
+    'fone-fio': '<path d="M7 4a3 3 0 0 0-3 3v3a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3zM17 4a3 3 0 0 0-3 3v3a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3z"/><path d="M7 13v2a5 5 0 0 0 5 5M17 13v2a5 5 0 0 1-5 5M12 20v2"/>',
+    perfume: '<rect x="6" y="9" width="12" height="12" rx="2"/><path d="M10 9V6h4v3M9 3h6v3H9z"/>',
+    som: '<rect x="3" y="7" width="18" height="10" rx="3"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="12" r="2"/>',
     bag: '<path d="M5 8h14l-1.2 12H6.2L5 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
     wa: '<path d="M20 11.5a8.5 8.5 0 0 1-12.6 7.4L3.5 20l1.2-3.7A8.5 8.5 0 1 1 20 11.5z"/>',
     trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
@@ -223,7 +233,7 @@
     $('cartFoot').hidden = false;
     $('cartBody').innerHTML = Sacola.ids().map(function (id) {
       var p = byId[id], q = Sacola.qtd(id), sub = Sacola.subtotal(id);
-      var thumb = p.img ? '<img src="' + IMG + p.img + '.webp" alt="" width="68" height="68">' : '<span class="thumb">' + icon(p.icon) + '</span>';
+      var thumb = p.img ? '<img src="' + IMG + p.img + '.webp" alt="" width="68" height="68">' : '<span class="thumb soon-thumb">' + icon(p.icon) + '</span>';
       var unit = p.price !== null ? money(p.price) + ' <span>un.</span>' : '<span class="ask">Consulte o preço</span>';
       var subtotal = sub !== null ? money(sub) : '<span class="ask">a confirmar</span>';
       return '<div class="cart-item" data-item="' + id + '">' + thumb +
@@ -303,10 +313,20 @@
      ========================================================= */
   function addLabel() { return icon('bag') + '<span class="long">Adicionar à sacola</span><span class="short">Adicionar</span>'; }
 
+  // arte "Em breve" no lugar da foto (preto da marca, arco laranja, ícone do produto)
+  function soonArt(p) {
+    return '<div class="card-media soon" role="img" aria-label="Foto de ' + esc(p.name) + ' em breve">' +
+      '<span class="soon-ring" aria-hidden="true"></span>' +
+      '<img class="soon-logo" src="assets/logo.png" alt="" width="752" height="552" loading="lazy">' +
+      '<span class="soon-icon" aria-hidden="true">' + icon(p.icon) + '</span>' +
+      '<span class="soon-text" aria-hidden="true">Em breve</span>' +
+      '<span class="soon-sub" aria-hidden="true">foto do produto</span>';
+  }
+
   function cardHTML(p) {
     var media = p.img
       ? '<div class="card-media"><img src="' + IMG + p.img + '.webp" alt="' + esc(p.name) + '" loading="lazy" width="640" height="640"><span class="card-tag">Foto ilustrativa</span>'
-      : '<div class="card-media no-photo">' + icon(p.icon) + '<span class="card-tag">Foto em breve</span>';
+      : soonArt(p);
     if (p.old) media += '<span class="card-badge">-' + p.off + '%</span>';
     media += '</div>';
 
@@ -323,9 +343,8 @@
       ? '<button type="button" class="btn-add" disabled>Indisponível</button>'
       : '<button type="button" class="btn-add" data-add="' + p.id + '">' + addLabel() + '</button>';
 
-    return '<article class="card">' + media +
+    return '<article class="card" data-cat="' + p.cat + '">' + media +
       '<div class="card-body">' +
-      '<span class="card-cat">' + esc(CATS[p.cat].nome) + '</span>' +
       '<h4>' + esc(p.name) + '</h4>' +
       '<div class="card-price">' + price + '</div>' + stock +
       '<div class="card-actions">' + add +
